@@ -1,5 +1,5 @@
 """
-day1.py
+day01.py
 
 Part one: pair up the smallest number in the left list with the smallest number in the right list, then second-smallest, etc etc.
 Add up all the pairwise differences and return the sum.
