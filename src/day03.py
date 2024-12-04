@@ -8,77 +8,92 @@ Part two: include conditional do() and don't() statements
 from pathlib import Path
 from dataclasses import dataclass
 from operator import mul
-import re
+
+from enum import Enum
+
+
+class InstructionType(Enum):
+    MUL = "mul"
+    DO = "do"
+    DONT = "dont"
 
 
 @dataclass
-class Mul:
+class Instruction:
+    type: InstructionType
     tape_position: int
-    operation = mul
-    pattern = r"mul\(\d+,\d+\)"
-    left: int
-    right: int
+    left: int | None = None
+    right: int | None = None
+
+    @property
+    def pattern(self) -> str:
+        match self.type:
+            case InstructionType.MUL:
+                return r"mul\(\d+,\d+\)"
+            case InstructionType.DO:
+                return r"do\(\)"
+            case InstructionType.DONT:
+                return r"don\'t\(\)"
 
 
-@dataclass
-class Do:
-    tape_position: int
-    pattern = r"do\(\)"
-
-
-@dataclass
-class Dont:
-    tape_position: int
-    pattern = r"don\'t\(\)"
-
-
-def parse_input(input_str: str) -> list[Mul | Do | Dont]:
-    # suboptimal implementation here, parses the string thrice. Should do a pointer-based thing.
-    mul_matches = re.finditer(Mul.pattern, input_str)  # have to read the tape manually
+def parse_input(input_str: str) -> list[Instruction]:
     instructions = []
-    for match in mul_matches:
-        match_str = match.group()
-        left, right = match_str[match_str.index("(") + 1 : match_str.index(")")].split(
-            ","
-        )
-        instructions.append(
-            Mul(left=int(left), right=int(right), tape_position=match.start())
-        )
+    cursor = 0
+    length = len(input_str)
 
-    do_matches = re.finditer(Do.pattern, input_str)
-    for match in do_matches:
-        instructions.append(Do(tape_position=match.start()))
+    while cursor < length:
+        # Try to match instructions at current cursor position
+        if input_str[cursor:].startswith("mul("):
+            # Find the closing parenthesis
+            end = input_str.find(")", cursor)
+            if end != -1:
+                try:
+                    left, right = map(int, input_str[cursor + 4 : end].split(","))
+                    instructions.append(
+                        Instruction(InstructionType.MUL, cursor, left, right)
+                    )
+                    cursor = end + 1
+                    continue
+                except ValueError:
+                    pass  # Not a valid mul instruction, move on
 
-    dont_matches = re.finditer(Dont.pattern, input_str)
-    for match in dont_matches:
-        instructions.append(Dont(tape_position=match.start()))
+        elif input_str[cursor:].startswith("do()"):
+            instructions.append(Instruction(InstructionType.DO, cursor))
+            cursor += 4
+            continue
+
+        elif input_str[cursor:].startswith("don't()"):
+            instructions.append(Instruction(InstructionType.DONT, cursor))
+            cursor += 7
+            continue
+
+        cursor += 1  # Move to next character if no instruction found
 
     return instructions
 
 
-def part1(input_data: list[Mul | Do | Dont]) -> int:
+def part1(input_data: list[Instruction]) -> int:
     return sum(
-        instruction.operation(instruction.left, instruction.right)
-        for instruction in input_data
-        if isinstance(instruction, Mul)
+        mul(inst.left, inst.right)
+        for inst in input_data
+        if inst.type == InstructionType.MUL
     )
 
 
-def part2(input_data: list[Mul | Do | Dont]) -> int:
+def part2(input_data: list[Instruction]) -> int:
     muls_enabled = True
-    count = 0
-    for instruction in sorted(input_data, key=lambda x: x.tape_position):
-        if isinstance(instruction, Do):
-            muls_enabled = True
-        elif isinstance(instruction, Dont):
-            muls_enabled = False
-        elif isinstance(instruction, Mul):
-            if muls_enabled:
-                count += instruction.operation(instruction.left, instruction.right)
-        else:
-            raise ValueError(f"unexpected instruction: {instruction}")
+    total = 0
 
-    return count
+    for inst in input_data:  # already sorted during parsing
+        match inst.type:
+            case InstructionType.DO:
+                muls_enabled = True
+            case InstructionType.DONT:
+                muls_enabled = False
+            case InstructionType.MUL if muls_enabled:
+                total += mul(inst.left, inst.right)
+
+    return total
 
 
 test_input = (
