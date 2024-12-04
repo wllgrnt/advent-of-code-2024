@@ -11,18 +11,18 @@ def parse_input(input_str: str) -> list[list[int]]:
 
 
 def part1(input_data: list[list[int]]) -> int:
-    pass
+    return 0
 
 
 def part2(input_data: list[list[int]]) -> int:
-    pass
+    return 0
 
 
 test_input = """
 """
 
-assert part1(parse_input(test_input)) == 0
-assert part2(parse_input(test_input)) == 0
+assert (part1_test := part1(parse_input(test_input))) == 0, part1_test
+assert (part2_test := part2(parse_input(test_input))) == 0, part2_test
 
 if __name__ == "__main__":
     with Path("inputs/dayxx.txt").open() as flines:
