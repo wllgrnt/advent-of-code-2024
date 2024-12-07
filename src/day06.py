@@ -75,7 +75,7 @@ def check_for_loop(obstacles: np.ndarray, guard_position: tuple[int, int]) -> bo
     Returns True if a loop is detected, False if guard exits map.
     """
     visited_coords_and_dir = set()
-    guard_direction = next(directions)  # Start going up
+    guard_direction = next(directions)
     visited_coords_and_dir.add((guard_position, guard_direction))
 
     m, n = obstacles.shape
