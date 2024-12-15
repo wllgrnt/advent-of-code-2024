@@ -67,6 +67,78 @@ def get_price(map, region) -> int:
     return area * perimeter
 
 
+def is_border(map, index):
+    if index[0] == 0 or index[0] == map.shape[0] - 1:
+        return True
+    if index[1] == 0 or index[1] == map.shape[1] - 1:
+        return True
+    for neigbour in get_neighbours(map, index):
+        if map[index] != map[neigbour]:
+            return True
+    return False
+
+
+def get_price_with_bulk_discount(map, region) -> int:
+    """area * number of distinct sides"""
+    area = len(region)
+    region_set = set(region)
+    sides = 0
+    visited = set()
+
+    def trace_side(pos, dr, dc):
+        """Trace a continuous side, returns True if it's a new side"""
+        if (pos, dr, dc) in visited:
+            return False
+
+        # Check if this is a border
+        row, col = pos
+        next_pos = (row + dr, col + dc)
+        is_border = (
+            row + dr < 0
+            or row + dr >= map.shape[0]
+            or col + dc < 0
+            or col + dc >= map.shape[1]
+            or next_pos not in region_set
+        )
+
+        if not is_border:
+            return False
+
+        # Mark as visited
+        visited.add((pos, dr, dc))
+
+        # Try to continue the side in both directions perpendicular to current direction
+        if dr == 0:  # horizontal border, check up and down
+            for next_dr in [-1, 1]:
+                next_r = row + next_dr
+                if (
+                    0 <= next_r < map.shape[0]
+                    and (next_r, col) in region_set
+                    and ((next_r, col), dr, dc) not in visited
+                ):
+                    trace_side((next_r, col), dr, dc)
+        else:  # vertical border, check left and right
+            for next_dc in [-1, 1]:
+                next_c = col + next_dc
+                if (
+                    0 <= next_c < map.shape[1]
+                    and (row, next_c) in region_set
+                    and ((row, next_c), dr, dc) not in visited
+                ):
+                    trace_side((row, next_c), dr, dc)
+
+        return True
+
+    # For each cell in the region
+    for pos in region:
+        # Check all four directions
+        for dr, dc in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            if trace_side(pos, dr, dc):
+                sides += 1
+
+    return area * sides
+
+
 def part1(input_data: np.array) -> int:
     regions = get_regions(input_data)
     total_price = sum(get_price(input_data, region) for region in regions)
@@ -74,7 +146,12 @@ def part1(input_data: np.array) -> int:
 
 
 def part2(input_data: np.array) -> int:
-    return 0
+    """As above, but now the price is area * number of sides"""
+    regions = get_regions(input_data)
+    total_price = sum(
+        get_price_with_bulk_discount(input_data, region) for region in regions
+    )
+    return total_price
 
 
 test_input = """RRRRIICCFF
@@ -90,7 +167,7 @@ MMMISSJEEE
 """
 
 assert (part1_test := part1(parse_input(test_input))) == 1930, part1_test
-assert (part2_test := part2(parse_input(test_input))) == 0, part2_test
+assert (part2_test := part2(parse_input(test_input))) == 1206, part2_test
 
 if __name__ == "__main__":
     with Path("inputs/day12.txt").open() as flines:
