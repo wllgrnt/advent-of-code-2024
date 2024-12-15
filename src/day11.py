@@ -6,43 +6,49 @@ stones that change every timestep.stone rules:
 2. if the stone has an even number of digits, it splits into two [left half of digits, right half of digits]
 3. otherwise, replace with val*2024.
 
-Part 1 and 2 are only distinguished by runtime.
+Part 1 and 2 are only distinguished by runtime. Cache is doing all the work here.
 """
+
 import math
+from functools import cache
 from pathlib import Path
-from tqdm import tqdm
+
 
 def parse_input(input_str: str) -> list[int]:
     return [int(x.strip()) for x in input_str.split()]
 
-def run_game(stones: list[int]) -> None:
-    new_stones = []
-    for i,stone in enumerate(stones):
-        if stone == 0:
-            stones[i] = 1
-        elif (num_digits := math.floor(math.log10(stone)) +1) % 2 == 0:
-            stones[i] = stone // 10**(num_digits // 2)
-            new_stones.append(stone % 10 **(num_digits // 2))
-        else:
-            stones[i] = stone*2024
-    stones.extend(new_stones)
+
+@cache
+def analyze_growth(stone: int, steps: int) -> int:
+    """Analyze how many stones a single stone will produce after n steps"""
+    if steps == 0:
+        return 1
+
+    if stone == 0:
+        return analyze_growth(1, steps - 1)
+
+    num_digits = math.floor(math.log10(stone)) + 1
+    if num_digits % 2 == 0:
+        # When splitting, we get two new stones
+        left = stone // 10 ** (num_digits // 2)
+        right = stone % 10 ** (num_digits // 2)
+        return analyze_growth(left, steps - 1) + analyze_growth(right, steps - 1)
+    else:
+        # When multiplying by 2024, we get a larger number
+        return analyze_growth(stone * 2024, steps - 1)
+
 
 def part1(input_data: list[int], steps: int) -> int:
-    """Run the stones <steps> times"""
-    for _ in tqdm(range(steps)):
-        run_game(input_data)
-    
-    return len(input_data)
-    
-
-
-def part2(input_data: list[int]) -> int:
-    return 0
+    """Calculate final stone count analytically"""
+    total = 0
+    for stone in input_data:
+        total += analyze_growth(stone, steps)
+    return total
 
 
 test_input = "125 17"
 
-assert (part1_test := part1(parse_input(test_input), steps=6)) ==22, part1_test
+assert (part1_test := part1(parse_input(test_input), steps=6)) == 22, part1_test
 assert (part1_test := part1(parse_input(test_input), steps=25)) == 55312, part1_test
 
 if __name__ == "__main__":
